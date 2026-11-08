@@ -70,7 +70,7 @@ function getOrCreateSheet(sheetName, headers) {
 
 function getSchedule(data) {
   var sheet = getOrCreateSheet(DATA_SHEET_NAME, [
-    'id', 'ho_ten', 'vai_tro', 'thang', 'tuan', 'ngay',
+    'id', 'ho_ten', 'vai_tro', 'nam', 'tuan', 'ngay',
     'task_type', 'task_custom', 'ma_ch', 'ten_ch', 'ghi_chu',
     'created_at', 'updated_at'
   ]);
@@ -94,7 +94,7 @@ function getSchedule(data) {
   if (data) {
     if (data.ho_ten) results = results.filter(function(r) { return r.ho_ten === data.ho_ten; });
     if (data.vai_tro) results = results.filter(function(r) { return r.vai_tro === data.vai_tro; });
-    if (data.thang)   results = results.filter(function(r) { return r.thang === data.thang; });
+    if (data.nam)   results = results.filter(function(r) { return r.nam === data.nam; });
     if (data.tuan)    results = results.filter(function(r) { return String(r.tuan) === String(data.tuan); });
   }
   
@@ -106,7 +106,7 @@ function saveSchedule(data) {
   if (!tasks || !Array.isArray(tasks)) return { success: false, error: 'Invalid tasks array' };
   
   var sheet = getOrCreateSheet(DATA_SHEET_NAME, [
-    'id', 'ho_ten', 'vai_tro', 'thang', 'tuan', 'ngay',
+    'id', 'ho_ten', 'vai_tro', 'nam', 'tuan', 'ngay',
     'task_type', 'task_custom', 'ma_ch', 'ten_ch', 'ghi_chu',
     'created_at', 'updated_at'
   ]);
@@ -116,20 +116,20 @@ function saveSchedule(data) {
   var headers = allRows[0];
   var idCol = headers.indexOf('id') + 1;
   var hoTenCol = headers.indexOf('ho_ten') + 1;
-  var thangCol = headers.indexOf('thang') + 1;
+  var namCol = headers.indexOf('nam') + 1;
   var tuanCol = headers.indexOf('tuan') + 1;
   
   // Collect IDs to save
   var saveIds = tasks.map(function(t) { return t.id; }).filter(Boolean);
   
-  // Delete existing rows that match (ho_ten, thang, tuan) and are being replaced
+  // Delete existing rows that match (ho_ten, nam, tuan) and are being replaced
   if (tasks.length > 0 && allRows.length > 1) {
     var sample = tasks[0];
     var rowsToDelete = [];
     for (var i = allRows.length - 1; i >= 1; i--) {
       var row = allRows[i];
       if (row[hoTenCol - 1] === sample.ho_ten &&
-          row[thangCol - 1] === sample.thang &&
+          row[namCol - 1] === sample.nam &&
           String(row[tuanCol - 1]) === String(sample.tuan)) {
         rowsToDelete.push(i + 1);
       }
@@ -147,7 +147,7 @@ function saveSchedule(data) {
       t.id || Utilities.getUuid(),
       t.ho_ten || '',
       t.vai_tro || '',
-      t.thang || '',
+      t.nam || '',
       t.tuan || '',
       t.ngay || '',
       t.task_type || '',
@@ -169,7 +169,7 @@ function saveSchedule(data) {
 
 function updateTask(data) {
   var sheet = getOrCreateSheet(DATA_SHEET_NAME, [
-    'id', 'ho_ten', 'vai_tro', 'thang', 'tuan', 'ngay',
+    'id', 'ho_ten', 'vai_tro', 'nam', 'tuan', 'ngay',
     'task_type', 'task_custom', 'ma_ch', 'ten_ch', 'ghi_chu',
     'created_at', 'updated_at'
   ]);
