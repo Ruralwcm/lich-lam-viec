@@ -23,7 +23,23 @@ function doGet(e) {
 // ========== doPost() - API CRUD ==========
 function doPost(e) {
   var action = e.parameter.action;
-  var data = JSON.parse(e.postData.contents);
+  var data = {};
+  
+  // Parse body: support both JSON body and form-urlencoded
+  if (e.postData && e.postData.contents) {
+    try {
+      var body = JSON.parse(e.postData.contents);
+      if (body && typeof body === 'object') {
+        if (body.action) action = body.action;
+        data = body;
+      }
+    } catch (err) {
+      // form-urlencoded fallback
+      data = e.parameter || {};
+      if (!action && data.action) action = data.action;
+    }
+  }
+  
   var result;
   
   try {
