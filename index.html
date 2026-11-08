@@ -215,8 +215,9 @@ body{font-family:'Be Vietnam Pro',system-ui,sans-serif;background:var(--bg);colo
 <div class="user-bar" id="userBar">
   <select id="vaiTro" onchange="onVaiTroChange()">
     <option value="">-- Vai trò --</option>
-    <option value="GĐV">GĐV</option>
     <option value="GĐM">GĐM</option>
+    <option value="GĐV">GĐV</option>
+    <option value="QLKV">QLKV</option>
   </select>
   <select id="hoTen">
     <option value="">-- Chọn người --</option>
@@ -302,7 +303,7 @@ body{font-family:'Be Vietnam Pro',system-ui,sans-serif;background:var(--bg);colo
     <button class="dash-close" onclick="closeDashboard()">✕</button>
   </div>
   <div class="dash-filters">
-    <select id="dashVaiTro"><option value="">Tất cả vai trò</option><option value="GĐV">GĐV</option><option value="GĐM">GĐM</option></select>
+    <select id="dashVaiTro"><option value="">Tất cả vai trò</option><option value="GĐM">GĐM</option><option value="GĐV">GĐV</option><option value="QLKV">QLKV</option></select>
     <select id="dashNam"></select>
     <select id="dashTuan" onchange="loadDashboard()"><option value="">Tất cả tuần</option></select>
     <button onclick="loadDashboard()">🔍 Xem</button>
