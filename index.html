@@ -556,7 +556,9 @@ textarea { min-height: 60px; resize: vertical; }
       </div>
       <div>
         <label>Họ tên</label>
-        <input type="text" id="hoTen" placeholder="Nhập họ tên của bạn">
+        <select id="hoTen">
+          <option value="">-- Chọn GĐV/GĐM --</option>
+        </select>
       </div>
     </div>
   </div>
@@ -564,19 +566,15 @@ textarea { min-height: 60px; resize: vertical; }
   <!-- Chọn kỳ -->
   <div class="form-section">
     <h2>Thời gian</h2>
-    <div class="form-row triple">
-      <div>
-        <label>Tháng</label>
-        <select id="thang"></select>
-      </div>
+    <div class="form-row">
       <div>
         <label>Năm</label>
         <select id="nam"></select>
       </div>
-      <div>
+      <div style="flex:2">
         <label>Tuần</label>
         <select id="tuan">
-          <option value="">-- Chọn tháng trước --</option>
+          <option value="">-- Chọn năm trước --</option>
         </select>
       </div>
     </div>
@@ -612,8 +610,6 @@ textarea { min-height: 60px; resize: vertical; }
       </select>
     </div>
     <div class="filter-group">
-      <label>Tháng</label>
-      <select id="dashThang"></select>
     </div>
     <div class="filter-group">
       <label>Năm</label>
@@ -725,7 +721,7 @@ var WEEK_DATES = {}; // date strings for each day
 // ========== INITIALIZATION ==========
 document.addEventListener('DOMContentLoaded', function() {
   initTabs();
-  initMonthSelects();
+  initWeekSelects(); loadGdvList();
   initViewToggle();
   initTaskTypeChange();
   initStoreSearch();
@@ -759,11 +755,81 @@ function initViewToggle() {
   });
 }
 
-// ========== MONTH / WEEK ==========
-function initMonthSelects() {
+// ========== YEAR / WEEK (ISO) ==========
+var GDV_LIST = [];
+
+function loadGdvList() {
+  // Fetch GĐV list from storelist
+  fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vSFt2Vx8iGkQ3Od-4j4StqPVUM9ms9eVhm99d7pF8A/pub?gid=900581387&single=true&output=csv')
+    .then(function(r) { return r.text(); })
+    .then(function(csv) {
+      var lines = csv.split('\n');
+      var sel = document.getElementById('hoTen');
+      // Store_list columns: find GĐV column
+      var headers = lines[0].split(',');
+      var gdvIdx = -1;
+      for (var h = 0; h < headers.length; h++) {
+        if (headers[h].trim() === 'GĐV') { gdvIdx = h; break; }
+      }
+      if (gdvIdx < 0) return;
+      
+      var seen = {};
+      for (var i = 1; i < lines.length; i++) {
+        var cols = lines[i].split(',');
+        var name = (cols[gdvIdx] || '').trim();
+        if (name && !seen[name]) {
+          seen[name] = true;
+          GDV_LIST.push({ ho_ten: name, vai_tro: 'GĐV' });
+          var opt = document.createElement('option');
+          opt.value = name;
+          opt.textContent = name;
+          sel.appendChild(opt);
+        }
+      }
+      // Sort options
+      sortSelect(sel);
+    })
+    .catch(function(e) { console.warn('loadGdvList error:', e); });
+}
+
+function sortSelect(sel) {
+  var opts = Array.from(sel.options);
+  opts.sort(function(a, b) { 
+    if (!a.value) return -1;
+    if (!b.value) return 1;
+    return a.textContent.localeCompare(b.textContent, 'vi'); 
+  });
+  sel.innerHTML = '';
+  opts.forEach(function(o) { sel.appendChild(o); });
+}
+
+function getISOWeekDates(year, week) {
+  // Get Monday of ISO week
+  var jan4 = new Date(year, 0, 4);
+  var jan4Day = jan4.getDay() || 7;
+  var week1Start = new Date(jan4);
+  week1Start.setDate(jan4.getDate() - (jan4Day - 1));
+  
+  var monday = new Date(week1Start);
+  monday.setDate(week1Start.getDate() + (week - 1) * 7);
+  
+  var sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  
+  return { start: monday, end: sunday };
+}
+
+function getISOWeekNumber(d) {
+  var date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
+  var yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  return Math.ceil(((date - yearStart) / 86400000 + 1) / 7);
+}
+
+function initWeekSelects() {
   var now = new Date();
   var currentYear = now.getFullYear();
-  var currentMonth = now.getMonth() + 1;
+  var currentWeek = getISOWeekNumber(now);
 
   // Năm
   var namSelect = document.getElementById('nam');
@@ -775,106 +841,68 @@ function initMonthSelects() {
     namSelect.appendChild(opt);
   }
 
-  // Tháng
-  var thangSelect = document.getElementById('thang');
-  for (var m = 1; m <= 12; m++) {
-    var opt = document.createElement('option');
-    opt.value = m;
-    opt.textContent = 'Tháng ' + m;
-    if (m === currentMonth) opt.selected = true;
-    thangSelect.appendChild(opt);
-  }
-
-  // Listen for changes
-  thangSelect.addEventListener('change', updateWeekSelect);
   namSelect.addEventListener('change', updateWeekSelect);
-
   updateWeekSelect();
 }
 
 function updateWeekSelect() {
-  var thang = parseInt(document.getElementById('thang').value);
   var nam = parseInt(document.getElementById('nam').value);
   var tuanSelect = document.getElementById('tuan');
   tuanSelect.innerHTML = '<option value="">-- Chọn tuần --</option>';
 
-  if (!thang || !nam) return;
+  if (!nam) return;
 
-  var weeks = getWeeksInMonth(thang, nam);
-  weeks.forEach(function(w, i) {
+  var now = new Date();
+  var currentWeek = getISOWeekNumber(now);
+  var currentYear = now.getFullYear();
+
+  // Show all 52 weeks of year
+  for (var w = 1; w <= 52; w++) {
+    var dates = getISOWeekDates(nam, w);
+    var startStr = formatDate(dates.start);
+    var endStr = formatDate(dates.end);
     var opt = document.createElement('option');
-    opt.value = w.weekNum;
-    var startStr = w.start.toISOString().split('T')[0].split('-').reverse().join('/');
-    var endStr = w.end.toISOString().split('T')[0].split('-').reverse().join('/');
-    opt.textContent = 'Tuần ' + w.weekNum + ' (' + startStr + ' → ' + endStr + ')';
+    opt.value = w;
+    opt.textContent = 'W' + String(w).padStart(2, '0') + ' (' + startStr + ' - ' + endStr + ')';
+    if (nam === currentYear && w === currentWeek) opt.selected = true;
     tuanSelect.appendChild(opt);
-  });
+  }
 
   tuanSelect.addEventListener('change', onWeekSelected);
+  // Auto-select current week
+  if (nam === currentYear) {
+    tuanSelect.value = currentWeek;
+    onWeekSelected();
+  }
 }
 
 function onWeekSelected() {
   var tuan = parseInt(document.getElementById('tuan').value);
-  var thang = parseInt(document.getElementById('thang').value);
   var nam = parseInt(document.getElementById('nam').value);
 
-  if (!tuan || !thang || !nam) {
+  if (!tuan || !nam) {
     document.getElementById('weekGridSection').style.display = 'none';
     document.getElementById('summarySection').style.display = 'none';
     return;
   }
 
-  // Build week dates
-  var weeks = getWeeksInMonth(thang, nam);
-  var weekData = weeks.find(function(w) { return w.weekNum === tuan; });
-  if (!weekData) return;
-
+  var dates = getISOWeekDates(nam, tuan);
   WEEK_DATES = {};
-  var d = new Date(weekData.start);
+  var d = new Date(dates.start);
   for (var i = 0; i < 7; i++) {
     WEEK_DATES[DAY_KEYS[i]] = formatDate(d);
     d.setDate(d.getDate() + 1);
   }
 
-  document.getElementById('weekLabel').textContent = 'Tuần ' + tuan + ' (Tháng ' + thang + '/' + nam + ')';
+  document.getElementById('weekLabel').textContent = 'W' + String(tuan).padStart(2, '0') + ' (' + nam + ') : ' + formatDate(dates.start) + ' - ' + formatDate(dates.end);
   document.getElementById('weekGridSection').style.display = '';
   document.getElementById('summarySection').style.display = '';
 
-  // Reset tasks
   weekTasks = {};
   DAY_KEYS.forEach(function(dk) { weekTasks[dk] = []; });
 
-  // Build grid
   renderWeekGrid();
-
-  // Try to load existing schedule
   loadExistingSchedule();
-}
-
-function getWeeksInMonth(month, year) {
-  var firstDay = new Date(year, month - 1, 1);
-  var lastDay = new Date(year, month, 0);
-  var weeks = [];
-
-  // Find Monday of the week containing the 1st
-  var start = new Date(firstDay);
-  var dayOfWeek = start.getDay(); // 0=Sun, 1=Mon...
-  var diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-  start.setDate(start.getDate() + diffToMonday);
-
-  var weekNum = 1;
-  while (start <= lastDay) {
-    var end = new Date(start);
-    end.setDate(end.getDate() + 6);
-    // Clip to month boundaries
-    var clipStart = new Date(Math.max(start.getTime(), firstDay.getTime()));
-    var clipEnd = new Date(Math.min(end.getTime(), lastDay.getTime()));
-    weeks.push({ weekNum: weekNum, start: new Date(clipStart), end: new Date(clipEnd) });
-    start.setDate(start.getDate() + 7);
-    weekNum++;
-  }
-
-  return weeks;
 }
 
 function formatDate(d) {
@@ -1194,12 +1222,12 @@ function validateBeforeSave() {
   var vaiTro = document.getElementById('vaiTro').value;
   var hoTen = document.getElementById('hoTen').value.trim();
   var tuan = document.getElementById('tuan').value;
-  var thang = document.getElementById('thang').value;
+  
 
   if (!vaiTro) { showToast('Vui lòng chọn vai trò', 'error'); return false; }
   if (!hoTen) { showToast('Vui lòng nhập họ tên', 'error'); return false; }
   if (!tuan) { showToast('Vui lòng chọn tuần', 'error'); return false; }
-  if (!thang) { showToast('Vui lòng chọn tháng', 'error'); return false; }
+  // thang removed - using year+week only
   return true;
 }
 
@@ -1209,7 +1237,7 @@ function saveWeek() {
 
   var hoTen = document.getElementById('hoTen').value.trim();
   var vaiTro = document.getElementById('vaiTro').value;
-  var thang = document.getElementById('thang').value;
+  
   var tuan = document.getElementById('tuan').value;
 
   var tasks = [];
@@ -1219,7 +1247,7 @@ function saveWeek() {
         id: t.id,
         ho_ten: hoTen,
         vai_tro: vaiTro,
-        thang: thang,
+        nam: nam,
         tuan: tuan,
         ngay: dk,
         task_type: t.task_type,
@@ -1259,9 +1287,9 @@ function loadExistingSchedule() {
   if (!GAS_URL) return;
 
   var hoTen = document.getElementById('hoTen').value.trim();
-  var thang = document.getElementById('thang').value;
+  
   var tuan = document.getElementById('tuan').value;
-  if (!hoTen || !thang || !tuan) return;
+  if (!hoTen || !tuan) return;
 
   showLoading(true);
   fetch(GAS_URL, {
@@ -1270,7 +1298,7 @@ function loadExistingSchedule() {
     body: JSON.stringify({
       action: 'getSchedule',
       ho_ten: hoTen,
-      thang: thang,
+      nam: nam,
       tuan: tuan
     })
   })
@@ -1325,15 +1353,11 @@ function initDashboardMonthSelects() {
     }
   }
 
-  var dashThang = document.getElementById('dashThang');
-  if (dashThang.options.length === 0) {
-    dashThang.appendChild(new Option('Tất cả', ''));
     for (var m = 1; m <= 12; m++) {
       var opt = document.createElement('option');
       opt.value = m;
       opt.textContent = 'Tháng ' + m;
       if (m === currentMonth) opt.selected = true;
-      dashThang.appendChild(opt);
     }
   }
 }
@@ -1346,7 +1370,6 @@ function loadDashboard() {
   }
 
   var vaiTro = document.getElementById('dashVaiTro').value;
-  var thang = document.getElementById('dashThang').value;
   var hoTen = document.getElementById('dashNguoi').value.trim();
 
   showLoading(true);
@@ -1356,7 +1379,7 @@ function loadDashboard() {
     body: JSON.stringify({
       action: 'getSchedule',
       vai_tro: vaiTro || undefined,
-      thang: thang || undefined,
+      nam: nam || undefined,
       ho_ten: hoTen || undefined
     })
   })
@@ -1408,7 +1431,7 @@ function renderTimelineView(data) {
   data.forEach(function(t) {
     var person = t.ho_ten + ' (' + t.vai_tro + ')';
     if (!grouped[person]) grouped[person] = {};
-    var weekKey = 'T' + t.tuan + ' - T' + t.thang;
+    var weekKey = 'W' + String(t.tuan).padStart(2,'0') + ' (' + t.nam + ')';
     if (!grouped[person][weekKey]) grouped[person][weekKey] = {};
     if (!grouped[person][weekKey][t.ngay]) grouped[person][weekKey][t.ngay] = [];
     grouped[person][weekKey][t.ngay].push(t);
@@ -1464,7 +1487,7 @@ function renderTableView(data) {
   var DAY_ORDER = { 'T2': 0, 'T3': 1, 'T4': 2, 'T5': 3, 'T6': 4, 'T7': 5, 'CN': 6 };
   data.sort(function(a, b) {
     return (a.ho_ten || '').localeCompare(b.ho_ten || '') ||
-      (a.thang || 0) - (b.thang || 0) ||
+      (a.nam || 0) - (b.nam || 0) || (a.tuan || 0) - (b.tuan || 0) ||
       (a.tuan || 0) - (b.tuan || 0) ||
       (DAY_ORDER[a.ngay] || 0) - (DAY_ORDER[b.ngay] || 0);
   });
@@ -1474,7 +1497,7 @@ function renderTableView(data) {
     html += '<tr>';
     html += '<td>' + escapeHtml(t.ho_ten) + '</td>';
     html += '<td>' + escapeHtml(t.vai_tro) + '</td>';
-    html += '<td>' + escapeHtml(t.thang) + '</td>';
+    html += '<td>' + escapeHtml(t.nam) + '</td>';
     html += '<td>' + escapeHtml(t.tuan) + '</td>';
     html += '<td>' + escapeHtml(t.ngay) + '</td>';
     html += '<td>' + getTaskBadge(t.task_type, typeLabel) + '</td>';
