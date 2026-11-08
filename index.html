@@ -315,6 +315,7 @@ body{font-family:'Be Vietnam Pro',system-ui,sans-serif;background:var(--bg);colo
 
 <!-- Footer -->
 <div class="footer-bar">
+  <button onclick="loadTestData()">🧪 Demo</button>
   <button onclick="openDashboard()">📊 Dashboard</button>
 </div>
 
@@ -900,6 +901,59 @@ document.addEventListener('drop',function(e){
   }
   dragTaskId=null;
 });
+
+// ========== TEST DATA ==========
+function loadTestData() {
+  var hoTen = document.getElementById('hoTen').value.trim();
+  var vaiTro = document.getElementById('vaiTro').value;
+  if (!hoTen || !vaiTro) { showToast('Chọn vai trò và tên trước!','error'); return; }
+
+  var dates = getISOWeekDates(currentWeekYear, currentWeekNum);
+  var sampleTasks = [
+    { ngay:'T2', timeStart:'08:00', timeEnd:'09:30', type:'Họp team', custom:'', ma:'', ten:'', ghiChu:'Họp đầu tuần', priority:true },
+    { ngay:'T2', timeStart:'10:00', timeEnd:'11:30', type:'Đào tạo', custom:'', ma:'WMR001', ten:'WinMart+ Nguyễn Trãi', ghiChu:'Đào tạo quy trình mới', priority:true },
+    { ngay:'T2', timeStart:'14:00', timeEnd:'16:00', type:'Kiểm tra CH', custom:'', ma:'WMR005', ten:'WinMart+ Cầu Giấy', ghiChu:'', priority:false },
+    { ngay:'T3', timeStart:'08:00', timeEnd:'17:00', type:'Đi thị trường', custom:'', ma:'', ten:'', ghiChu:'Khảo sát khu vực Đống Đa', priority:true },
+    { ngay:'T3', timeStart:'09:00', timeEnd:'10:00', type:'Báo cáo', custom:'', ma:'', ten:'', ghiChu:'Báo cáo tuần', priority:false },
+    { ngay:'T4', timeStart:'08:30', timeEnd:'12:00', type:'Đào tạo', custom:'', ma:'WMR010', ten:'WinMart+ Thanh Xuân', ghiChu:'Training nhân viên mới', priority:true },
+    { ngay:'T4', timeStart:'14:00', timeEnd:'15:30', type:'Họp team', custom:'', ma:'', ten:'', ghiChu:'Review giữa tuần', priority:false },
+    { ngay:'T5', timeStart:'07:00', timeEnd:'16:00', type:'Kiểm tra CH', custom:'', ma:'WMR015', ten:'WinMart+ Hà Đông', ghiChu:'Kiểm tra trưng bày + tồn kho', priority:false },
+    { ngay:'T5', timeStart:'16:30', timeEnd:'18:00', type:'Khác', custom:'Họp đối tác NCC', ma:'', ten:'', ghiChu:'Với NCC Sữa Vinamilk', priority:true },
+    { ngay:'T6', timeStart:'08:00', timeEnd:'11:00', type:'Tuyển dụng', custom:'', ma:'', ten:'', ghiChu:'Phỏng vấn QLKV mới', priority:false },
+    { ngay:'T6', timeStart:'13:00', timeEnd:'17:00', type:'Khảo sát NSO', custom:'', ma:'WMR020', ten:'WinMart+ Long Biên', ghiChu:'Khảo sát mặt bằng mới', priority:true },
+    { ngay:'T7', timeStart:'08:00', timeEnd:'10:00', type:'Báo cáo', custom:'', ma:'', ten:'', ghiChu:'Tổng kết tuần', priority:false },
+  ];
+
+  var tasks = sampleTasks.map(function(t){
+    var id = generateId();
+    return {
+      id: id, task_type: t.type, task_custom: t.custom,
+      ma_ch: t.ma, ten_ch: t.ten, ghiChu: t.ghiChu,
+      ho_ten: hoTen, vai_tro: vaiTro,
+      nam: currentWeekYear, tuan: currentWeekNum, ngay: t.ngay,
+      created_at: new Date().toISOString(), updated_at: new Date().toISOString()
+    };
+  });
+
+  showLoading(true);
+  fetchGAS('saveSchedule', {tasks: tasks})
+    .then(function(r){
+      if (r && r.success) {
+        // Save extended data to localStorage
+        tasks.forEach(function(t,i){
+          var s = sampleTasks[i];
+          localStorage.setItem('task_priority_'+t.id, String(s.priority));
+          localStorage.setItem('task_timeStart_'+t.id, s.timeStart);
+          localStorage.setItem('task_timeEnd_'+t.id, s.timeEnd);
+          localStorage.setItem('task_status_'+t.id, 'pending');
+        });
+        loadScheduleForView();
+        showToast('✅ Đã nạp '+tasks.length+' task mẫu', 'success');
+      }
+    })
+    .catch(function(e){ showToast('❌ Lỗi: '+e.message, 'error'); })
+    .finally(function(){ showLoading(false); });
+}
 
 </script>
 </body>
