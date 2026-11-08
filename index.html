@@ -1011,14 +1011,6 @@ function initDashboardMonthSelects() {
       dashNam.appendChild(opt);
     }
   }
-
-    for (var m = 1; m <= 12; m++) {
-      var opt = document.createElement('option');
-      opt.value = m;
-      opt.textContent = 'Tháng ' + m;
-      if (m === currentMonth) opt.selected = true;
-    }
-  }
 }
 
 function loadDashboard() {
