@@ -1,15 +1,16 @@
 /**
- * Lịch Làm Việc - Google Apps Script Backend
- * Sheet chính: LichLamViec
- *   - Tab "Data": lưu trữ task records
- *   - Tab "Storelist_Ref": copy storelist lookup
+ * Lịch Làm Việc - Google Apps Script Backend (Standalone)
+ * Backend sheet: Data Web App Rural (1RtVPThy95QMdHGvfL_9lCMNwcgStXCxxqLj1Cpf-KwY)
+ *   - Tab "LichLamViec_Data": lưu trữ task records
+ *   - Tab "LichLamViec_Store": copy storelist lookup
  */
 
 // ========== CONFIG ==========
-var SPREADSHEET_ID = '1fMmEm1GC9aei_3oeu2vcadPVsUM9ms9eVhm99d7pF8A'; // storelist nguồn
+var BACKEND_SHEET_ID = '1RtVPThy95QMdHGvfL_9lCMNwcgStXCxxqLj1Cpf-KwY'; // sheet backend
+var STORELIST_SOURCE_ID = '1fMmEm1GC9aei_3oeu2vcadPVsUM9ms9eVhm99d7pF8A'; // storelist nguồn
 var STORE_SHEET_NAME = 'Store_list';
-var DATA_SHEET_NAME = 'Data';
-var STORE_REF_SHEET_NAME = 'Storelist_Ref';
+var DATA_SHEET_NAME = 'LichLamViec_Data';
+var STORE_REF_SHEET_NAME = 'LichLamViec_Store';
 
 // ========== doGet() - web app entry point ==========
 function doGet(e) {
@@ -55,7 +56,7 @@ function doPost(e) {
 
 // ========== CRUD FUNCTIONS ==========
 function getOrCreateSheet(sheetName, headers) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = SpreadsheetApp.openById(BACKEND_SHEET_ID);
   var sheet = ss.getSheetByName(sheetName);
   if (!sheet) {
     sheet = ss.insertSheet(sheetName);
@@ -246,7 +247,7 @@ function getStorelist(data) {
 
 function syncStorelist() {
   try {
-    var srcSs = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var srcSs = SpreadsheetApp.openById(STORELIST_SOURCE_ID);
     var srcSheet = srcSs.getSheetByName(STORE_SHEET_NAME);
     if (!srcSheet) return;
     
