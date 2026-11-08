@@ -418,35 +418,34 @@ function initViewToggle() {
 var GDV_LIST = [];
 
 function loadGdvList() {
-  // Fetch GĐV list from storelist
-  fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vSFt2Vx8iGkQ3Od-4j4StqPVUM9ms9eVhm99d7pF8A/pub?gid=900581387&single=true&output=csv')
-    .then(function(r) { return r.text(); })
-    .then(function(csv) {
-      var lines = csv.split('\n');
-      var sel = document.getElementById('hoTen');
-      // Store_list columns: find GĐV column
-      var headers = lines[0].split(',');
-      var gdvIdx = -1;
-      for (var h = 0; h < headers.length; h++) {
-        if (headers[h].trim() === 'GĐV') { gdvIdx = h; break; }
-      }
-      if (gdvIdx < 0) return;
-      
-      var seen = {};
-      for (var i = 1; i < lines.length; i++) {
-        var cols = lines[i].split(',');
-        var name = (cols[gdvIdx] || '').trim();
-        if (name && !seen[name]) {
-          seen[name] = true;
-          GDV_LIST.push({ ho_ten: name, vai_tro: 'GĐV' });
-          var opt = document.createElement('option');
-          opt.value = name;
-          opt.textContent = name;
-          sel.appendChild(opt);
-        }
-      }
-      // Sort options
-      sortSelect(sel);
+  var sel = document.getElementById('hoTen');
+  
+  // Always add GĐM option first
+  var gdmOpt = document.createElement('option');
+  gdmOpt.value = 'GĐM';
+  gdmOpt.textContent = 'GĐM (Giám đốc Miền)';
+  sel.appendChild(gdmOpt);
+  
+  if (!GAS_URL) {
+    showToast('⚠️ Chưa cấu hình GAS URL', 'error');
+    return;
+  }
+  
+  fetch(GAS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'action=getGdvList&data=' + encodeURIComponent('{}')
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(result) {
+      if (!result.success || !result.data) return;
+      result.data.forEach(function(gdv) {
+        GDV_LIST.push(gdv);
+        var opt = document.createElement('option');
+        opt.value = gdv.ho_ten;
+        opt.textContent = gdv.ho_ten + ' (' + gdv.vai_tro + ')';
+        sel.appendChild(opt);
+      });
     })
     .catch(function(e) { console.warn('loadGdvList error:', e); });
 }
