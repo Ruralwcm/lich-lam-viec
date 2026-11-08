@@ -966,8 +966,8 @@ function loadExistingSchedule() {
   })
   .then(function(r) { return r.json(); })
   .then(function(res) {
-    if (res.success && res.data) {
-      // Reset
+    if (res.success && res.data && res.data.length > 0) {
+      // Reset grid first
       DAY_KEYS.forEach(function(dk) { weekTasks[dk] = []; });
       res.data.forEach(function(t) {
         var dk = t.ngay;
@@ -983,6 +983,7 @@ function loadExistingSchedule() {
         }
       });
       renderAllDayTasks();
+      showToast('📋 Đã tải ' + res.data.length + ' task từ lịch cũ — sửa/xóa thoải mái rồi Lưu nhé!', 'success');
     }
   })
   .catch(function(err) {
