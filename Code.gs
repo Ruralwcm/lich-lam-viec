@@ -300,7 +300,7 @@ function syncStorelist() {
   }
 }
 
-// ========== GĐV LIST ==========
+// ========== NHÂN SỰ LIST (GĐM + GĐV + QLKV) ==========
 function getGdvList() {
   try {
     var srcSs = SpreadsheetApp.openById(STORELIST_SOURCE_ID);
@@ -311,27 +311,48 @@ function getGdvList() {
     if (srcData.length <= 1) return { success: true, data: [] };
     
     var headers = srcData[0];
-    var gdvCol = -1;
+    var gdvCol = -1, qlkvCol = -1;
     for (var h = 0; h < headers.length; h++) {
-      if (String(headers[h]).trim() === 'GĐV') { gdvCol = h; break; }
+      var hdr = String(headers[h]).trim();
+      if (hdr === 'GĐV') { gdvCol = h; }
+      else if (hdr === 'QLKV') { qlkvCol = h; }
     }
-    if (gdvCol < 0) return { success: false, error: 'GĐV column not found' };
     
     var seen = {};
-    var gdvList = [];
-    for (var i = 1; i < srcData.length; i++) {
-      var name = String(srcData[i][gdvCol] || '').trim();
-      if (name && !seen[name]) {
-        seen[name] = true;
-        gdvList.push({ ho_ten: name, vai_tro: 'GĐV' });
+    var nhanSuList = [];
+    
+    // Collect GĐV names
+    if (gdvCol >= 0) {
+      for (var i = 1; i < srcData.length; i++) {
+        var name = String(srcData[i][gdvCol] || '').trim();
+        if (name && !seen[name]) {
+          seen[name] = true;
+          nhanSuList.push({ ho_ten: name, vai_tro: 'GĐV' });
+        }
       }
     }
-    // Sort alphabetically
-    gdvList.sort(function(a, b) { return a.ho_ten.localeCompare(b.ho_ten, 'vi'); });
+    // Collect QLKV names
+    if (qlkvCol >= 0) {
+      for (var i = 1; i < srcData.length; i++) {
+        var name = String(srcData[i][qlkvCol] || '').trim();
+        if (name && !seen[name]) {
+          seen[name] = true;
+          nhanSuList.push({ ho_ten: name, vai_tro: 'QLKV' });
+        }
+      }
+    }
+    // Sort: GĐV first, then QLKV, alphabetically within each
+    var roleOrder = { 'GĐV': 0, 'QLKV': 1 };
+    nhanSuList.sort(function(a, b) {
+      var ra = roleOrder[a.vai_tro] || 99;
+      var rb = roleOrder[b.vai_tro] || 99;
+      if (ra !== rb) return ra - rb;
+      return a.ho_ten.localeCompare(b.ho_ten, 'vi');
+    });
     // Add GĐM at top
-    gdvList.unshift({ ho_ten: 'GĐM (Giám đốc Miền)', vai_tro: 'GĐM' });
+    nhanSuList.unshift({ ho_ten: 'GĐM (Giám đốc Miền)', vai_tro: 'GĐM' });
     
-    return { success: true, data: gdvList };
+    return { success: true, data: nhanSuList };
   } catch (e) {
     Logger.log('getGdvList error: ' + e.toString());
     return { success: false, error: e.toString() };
