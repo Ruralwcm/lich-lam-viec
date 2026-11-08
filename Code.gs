@@ -43,6 +43,9 @@ function doPost(e) {
       case 'getStorelist':
         result = getStorelist(data);
         break;
+      case 'getGdvList':
+        result = getGdvList();
+        break;
       default:
         result = { success: false, error: 'Unknown action: ' + action };
     }
@@ -252,24 +255,70 @@ function syncStorelist() {
     if (!srcSheet) return;
     
     var srcData = srcSheet.getDataRange().getValues();
-    var destSheet = getOrCreateSheet(STORE_REF_SHEET_NAME, ['Mã SAP', 'Tên cửa hàng']);
+    var headers = srcData[0];
+    // Find GĐV column
+    var gdvCol = -1;
+    for (var h = 0; h < headers.length; h++) {
+      if (String(headers[h]).trim() === 'GĐV') { gdvCol = h; break; }
+    }
+    
+    var destSheet = getOrCreateSheet(STORE_REF_SHEET_NAME, ['Mã SAP', 'Tên cửa hàng', 'GĐV']);
     
     destSheet.clearContents();
     if (srcData.length > 0) {
-      destSheet.getRange(1, 1, 1, 2).setValues([['Mã SAP', 'Tên cửa hàng']]);
-      destSheet.getRange(1, 1, 1, 2).setFontWeight('bold').setBackground('#C00000').setFontColor('#ffffff');
+      destSheet.getRange(1, 1, 1, 3).setValues([['Mã SAP', 'Tên cửa hàng', 'GĐV']]);
+      destSheet.getRange(1, 1, 1, 3).setFontWeight('bold').setBackground('#C00000').setFontColor('#ffffff');
     }
     
-    // Copy cols A,B (index 0,1)
+    // Copy cols A,B + GĐV
     var storeData = [];
     for (var i = 0; i < srcData.length; i++) {
-      storeData.push([srcData[i][0], srcData[i][1]]);
+      var gdv = gdvCol >= 0 ? (srcData[i][gdvCol] || '') : '';
+      storeData.push([srcData[i][0], srcData[i][1], gdv]);
     }
     if (storeData.length > 1) {
-      destSheet.getRange(2, 1, storeData.length - 1, 2).setValues(storeData.slice(1));
+      destSheet.getRange(2, 1, storeData.length - 1, 3).setValues(storeData.slice(1));
     }
   } catch (e) {
     Logger.log('syncStorelist error: ' + e.toString());
+  }
+}
+
+// ========== GĐV LIST ==========
+function getGdvList() {
+  try {
+    var srcSs = SpreadsheetApp.openById(STORELIST_SOURCE_ID);
+    var srcSheet = srcSs.getSheetByName(STORE_SHEET_NAME);
+    if (!srcSheet) return { success: false, error: 'Store_list not found' };
+    
+    var srcData = srcSheet.getDataRange().getValues();
+    if (srcData.length <= 1) return { success: true, data: [] };
+    
+    var headers = srcData[0];
+    var gdvCol = -1;
+    for (var h = 0; h < headers.length; h++) {
+      if (String(headers[h]).trim() === 'GĐV') { gdvCol = h; break; }
+    }
+    if (gdvCol < 0) return { success: false, error: 'GĐV column not found' };
+    
+    var seen = {};
+    var gdvList = [];
+    for (var i = 1; i < srcData.length; i++) {
+      var name = String(srcData[i][gdvCol] || '').trim();
+      if (name && !seen[name]) {
+        seen[name] = true;
+        gdvList.push({ ho_ten: name, vai_tro: 'GĐV' });
+      }
+    }
+    // Sort alphabetically
+    gdvList.sort(function(a, b) { return a.ho_ten.localeCompare(b.ho_ten, 'vi'); });
+    // Add GĐM at top
+    gdvList.unshift({ ho_ten: 'GĐM (Giám đốc Miền)', vai_tro: 'GĐM' });
+    
+    return { success: true, data: gdvList };
+  } catch (e) {
+    Logger.log('getGdvList error: ' + e.toString());
+    return { success: false, error: e.toString() };
   }
 }
 
