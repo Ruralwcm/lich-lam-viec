@@ -14,10 +14,15 @@ var STORE_REF_SHEET_NAME = 'LichLamViec_Store';
 
 // ========== doGet() - web app entry point ==========
 function doGet(e) {
-  return HtmlService.createHtmlOutputFromFile('Index')
-    .setTitle('Khai Báo Lịch Làm Việc')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
+  return HtmlService.createHtmlOutput(
+    '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">'+
+    '<title>Lịch Làm Việc</title></head><body style="font-family:sans-serif;text-align:center;padding:40px;">'+
+    '<h2>📅 Lịch Làm Việc</h2><p>Vui lòng truy cập:</p>'+
+    '<p><a href="https://ruralwcm.github.io/lich-lam-viec/">ruralwcm.github.io/lich-lam-viec/</a></p>'+
+    '<script>window.location.href="https://ruralwcm.github.io/lich-lam-viec/";</script></body></html>'
+  )
+  .setTitle('Lịch Làm Việc')
+  .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 // ========== doPost() - API CRUD ==========
